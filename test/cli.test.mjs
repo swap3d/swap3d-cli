@@ -7,6 +7,8 @@ import {
   DEFAULT_API_URL,
   downloadResult,
   getConfigPath,
+  getFormats,
+  getUsage,
   parseArgs,
   readConfig,
   runCli,
@@ -109,6 +111,52 @@ test('submitConversion posts multipart data to the developer API', async () => {
   }
 });
 
+test('getUsage reads API-key usage metadata', async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({
+      usageCount: 12,
+      limit: 100,
+      remaining: 88,
+      plan: 'free',
+      monthStart: '2026-07-01T00:00:00.000Z',
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    const usage = await getUsage({ apiUrl: DEFAULT_API_URL, apiKey: 'sk_test_123' });
+    assert.equal(usage.remaining, 88);
+    assert.equal(calls[0].url, `${DEFAULT_API_URL}/openapi/usage`);
+    assert.equal(calls[0].options.headers.Authorization, 'Bearer sk_test_123');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('getFormats reads live format metadata', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    targetFormats: ['glb'],
+    sourceExtensions: ['obj'],
+    uploadLimitBytes: 100,
+  }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
+
+  try {
+    const formats = await getFormats({ apiUrl: DEFAULT_API_URL });
+    assert.deepEqual(formats.targetFormats, ['glb']);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('convert waits for completion and downloads the result', async () => {
   const tempDir = await createTempDir();
   const modelPath = path.join(tempDir, 'cube.obj');
@@ -168,6 +216,116 @@ test('convert waits for completion and downloads the result', async () => {
       'https://api.example.test/api/v1/openapi/convert/status/job_123',
       'https://api.example.test/downloads/job_123.glb',
     ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('convert can emit JSON output', async () => {
+  const tempDir = await createTempDir();
+  const modelPath = path.join(tempDir, 'cube.obj');
+  const outputPath = path.join(tempDir, 'cube.glb');
+  await fs.writeFile(modelPath, 'o cube\n');
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    if (String(url).endsWith('/openapi/convert')) {
+      return new Response(JSON.stringify({ jobId: 'job_123' }), {
+        status: 202,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    if (String(url).includes('/openapi/convert/status/job_123')) {
+      return new Response(JSON.stringify({
+        status: 'completed',
+        result: {
+          targetFormat: 'glb',
+          downloadUrl: '/downloads/job_123.glb',
+          outputExpiresAt: '2026-07-28T00:00:00.000Z',
+        },
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    if (String(url).endsWith('/downloads/job_123.glb')) {
+      return new Response('converted-glb', { status: 200 });
+    }
+    return new Response('not found', { status: 404 });
+  };
+
+  try {
+    const out = createBufferWriter();
+    await runCli([
+      'convert',
+      modelPath,
+      '--to',
+      'glb',
+      '--out',
+      outputPath,
+      '--json',
+      '--poll-interval',
+      '1',
+    ], { out, err: createBufferWriter() }, {
+      XDG_CONFIG_HOME: tempDir,
+      SWAP3D_API_KEY: 'sk_test_123',
+      SWAP3D_API_URL: 'https://api.example.test/api/v1',
+    });
+
+    assert.deepEqual(JSON.parse(out.value()), {
+      jobId: 'job_123',
+      status: 'completed',
+      output: outputPath,
+      result: {
+        targetFormat: 'glb',
+        outputExpiresAt: '2026-07-28T00:00:00.000Z',
+      },
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('usage command emits JSON output', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    usageCount: 1,
+    limit: 100,
+    remaining: 99,
+    plan: 'free',
+    monthStart: '2026-07-01T00:00:00.000Z',
+  }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
+
+  try {
+    const out = createBufferWriter();
+    await runCli(['usage', '--json'], { out, err: createBufferWriter() }, {
+      SWAP3D_API_KEY: 'sk_test_123',
+      SWAP3D_API_URL: 'https://api.example.test/api/v1',
+    });
+
+    assert.equal(JSON.parse(out.value()).usageCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('formats command falls back to built-in metadata', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('missing', { status: 404 });
+
+  try {
+    const out = createBufferWriter();
+    const err = createBufferWriter();
+    await runCli(['formats', '--json'], { out, err }, {
+      SWAP3D_API_URL: 'https://api.example.test/api/v1',
+    });
+
+    const payload = JSON.parse(out.value());
+    assert.equal(payload.source, 'built-in-fallback');
+    assert.ok(payload.targetFormats.includes('glb'));
   } finally {
     globalThis.fetch = originalFetch;
   }

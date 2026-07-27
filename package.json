@@ -6,9 +6,18 @@
   "bin": {
     "swap3d": "./src/cli.mjs"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/swap3d/swap3d-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/swap3d/swap3d-cli/issues"
+  },
+  "homepage": "https://github.com/swap3d/swap3d-cli#readme",
   "files": [
     "src",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
@@ -17,6 +26,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "swap3d",

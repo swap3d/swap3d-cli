@@ -159,6 +159,10 @@ async function fetchJson(url, options) {
   return payload;
 }
 
+function writeJson(out, payload) {
+  out.write(`${JSON.stringify(payload, null, 2)}\n`);
+}
+
 function validateNodeVersion() {
   const major = Number(process.versions.node.split('.')[0]);
   if (major < 18) {
@@ -241,13 +245,30 @@ export async function getJobStatus({ apiUrl, apiKey, jobId }) {
   });
 }
 
+export async function getUsage({ apiUrl, apiKey }) {
+  return fetchJson(makeApiUrl(apiUrl, '/openapi/usage'), {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: 'application/json',
+    },
+  });
+}
+
+export async function getFormats({ apiUrl }) {
+  return fetchJson(makeApiUrl(apiUrl, '/openapi/formats'), {
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+}
+
 async function pollJob({ apiUrl, apiKey, jobId, intervalMs, timeoutMs, out }) {
   const start = Date.now();
   let lastStatus = null;
 
   while (true) {
     const status = await getJobStatus({ apiUrl, apiKey, jobId });
-    if (status.status !== lastStatus) {
+    if (out && status.status !== lastStatus) {
       out.write(`status: ${status.status}\n`);
       lastStatus = status.status;
     }
@@ -298,10 +319,11 @@ Usage:
   swap3d auth login --api-key <key> [--api-url <url>]
   swap3d auth status
   swap3d auth logout
-  swap3d convert <file> --to glb [--out <file>] [--no-wait]
+  swap3d convert <file> --to glb [--out <file>] [--no-wait] [--json]
   swap3d job status <jobId> [--json]
-  swap3d job download <jobId> --out <file>
-  swap3d formats
+  swap3d job download <jobId> --out <file> [--json]
+  swap3d usage [--json]
+  swap3d formats [--json] [--offline]
 
 Environment:
   SWAP3D_API_KEY   API key for CI and non-interactive usage
@@ -309,15 +331,28 @@ Environment:
 `);
 }
 
-function printFormats(out = process.stdout) {
+function getBuiltInFormatsPayload(source = 'built-in') {
+  return {
+    targetFormats: TARGET_FORMATS,
+    sourceExtensions: SOURCE_EXTENSIONS,
+    uploadLimitBytes: MAX_UPLOAD_BYTES,
+    source,
+  };
+}
+
+function printFormats(payload, out = process.stdout) {
+  const uploadLimitMb = Math.round(payload.uploadLimitBytes / 1024 / 1024);
   out.write(`Target formats:
-  ${TARGET_FORMATS.join(', ')}
+  ${payload.targetFormats.join(', ')}
 
 Source extensions:
-  ${SOURCE_EXTENSIONS.map((item) => `.${item}`).join(', ')}
+  ${payload.sourceExtensions.map((item) => `.${item}`).join(', ')}
 
 Upload limit:
-  100 MB
+  ${uploadLimitMb} MB
+
+Source:
+  ${payload.source}
 `);
 }
 
@@ -342,6 +377,15 @@ async function handleAuth(args, io, env) {
 
   if (action === 'status') {
     const runtime = await resolveRuntime(options, env);
+    if (options.json) {
+      writeJson(io.out, {
+        apiUrl: runtime.apiUrl,
+        apiUrlSource: runtime.apiUrlSource,
+        apiKeyConfigured: Boolean(runtime.apiKey),
+        apiKeySource: runtime.apiKeySource,
+      });
+      return;
+    }
     io.out.write(`API URL: ${runtime.apiUrl} (${runtime.apiUrlSource})\n`);
     io.out.write(`API key: ${runtime.apiKey ? `configured (${runtime.apiKeySource})` : 'not configured'}\n`);
     return;
@@ -372,7 +416,14 @@ async function handleConvert(args, io, env) {
     targetFormat,
   });
 
-  io.out.write(`jobId: ${result.jobId}\n`);
+  if (options.json && options.noWait) {
+    writeJson(io.out, result);
+    return;
+  }
+
+  if (!options.json) {
+    io.out.write(`jobId: ${result.jobId}\n`);
+  }
 
   if (options.noWait) {
     io.out.write(`statusUrl: ${result.statusUrl}\n`);
@@ -385,7 +436,7 @@ async function handleConvert(args, io, env) {
     jobId: result.jobId,
     intervalMs: Number(options.pollInterval || 2000),
     timeoutMs: Number(options.timeout || 15 * 60 * 1000),
-    out: io.out,
+    out: options.json ? null : io.out,
   });
 
   const outFile = options.out || defaultOutputPath(inputFile, targetFormat);
@@ -394,6 +445,18 @@ async function handleConvert(args, io, env) {
     downloadUrl: status.result?.downloadUrl,
     outFile,
   });
+  if (options.json) {
+    writeJson(io.out, {
+      jobId: result.jobId,
+      status: status.status,
+      output: outFile,
+      result: {
+        targetFormat: status.result?.targetFormat,
+        outputExpiresAt: status.result?.outputExpiresAt,
+      },
+    });
+    return;
+  }
   io.out.write(`downloaded: ${outFile}\n`);
 }
 
@@ -407,7 +470,7 @@ async function handleJob(args, io, env) {
   if (action === 'status') {
     const status = await getJobStatus({ apiUrl: runtime.apiUrl, apiKey: runtime.apiKey, jobId });
     if (options.json) {
-      io.out.write(`${JSON.stringify(status, null, 2)}\n`);
+      writeJson(io.out, status);
     } else {
       io.out.write(`status: ${status.status}\n`);
       if (status.status === 'completed') {
@@ -433,11 +496,78 @@ async function handleJob(args, io, env) {
       throw new CliError(`Job is not completed. Current status: ${status.status}`);
     }
     await downloadResult({ apiUrl: runtime.apiUrl, downloadUrl: status.result?.downloadUrl, outFile });
+    if (options.json) {
+      writeJson(io.out, {
+        jobId,
+        status: status.status,
+        output: outFile,
+        result: {
+          targetFormat: status.result?.targetFormat,
+          outputExpiresAt: status.result?.outputExpiresAt,
+        },
+      });
+      return;
+    }
     io.out.write(`downloaded: ${outFile}\n`);
     return;
   }
 
   throw new CliError('Usage: swap3d job <status|download> <jobId>');
+}
+
+async function handleUsage(args, io, env) {
+  const { options } = parseArgs(args);
+  const runtime = await resolveRuntime(options, env);
+  requireApiKey(runtime);
+
+  const usage = await getUsage({ apiUrl: runtime.apiUrl, apiKey: runtime.apiKey });
+  if (options.json) {
+    writeJson(io.out, usage);
+    return;
+  }
+
+  io.out.write(`plan: ${usage.plan || 'unknown'}\n`);
+  io.out.write(`usage: ${usage.usageCount ?? 'unknown'} / ${usage.limit ?? 'unknown'}\n`);
+  if (usage.remaining !== undefined) {
+    io.out.write(`remaining: ${usage.remaining}\n`);
+  }
+  if (usage.monthStart) {
+    io.out.write(`monthStart: ${usage.monthStart}\n`);
+  }
+}
+
+async function handleFormats(args, io, env) {
+  const { options } = parseArgs(args);
+  const runtime = await resolveRuntime(options, env);
+
+  let payload = getBuiltInFormatsPayload('built-in');
+  if (!options.offline) {
+    try {
+      const live = await getFormats({ apiUrl: runtime.apiUrl });
+      payload = {
+        targetFormats: live.targetFormats || TARGET_FORMATS,
+        sourceExtensions: live.sourceExtensions || SOURCE_EXTENSIONS,
+        uploadLimitBytes: live.uploadLimitBytes || MAX_UPLOAD_BYTES,
+        source: 'api',
+      };
+    } catch (error) {
+      payload = {
+        ...payload,
+        source: 'built-in-fallback',
+        warning: error.message,
+      };
+    }
+  }
+
+  if (options.json) {
+    writeJson(io.out, payload);
+    return;
+  }
+
+  printFormats(payload, io.out);
+  if (payload.warning) {
+    io.err.write(`Warning: ${payload.warning}\n`);
+  }
 }
 
 export async function runCli(argv = process.argv.slice(2), io = { out: process.stdout, err: process.stderr }, env = process.env) {
@@ -455,7 +585,12 @@ export async function runCli(argv = process.argv.slice(2), io = { out: process.s
   }
 
   if (command === 'formats') {
-    printFormats(io.out);
+    await handleFormats(rest, io, env);
+    return 0;
+  }
+
+  if (command === 'usage') {
+    await handleUsage(rest, io, env);
     return 0;
   }
 

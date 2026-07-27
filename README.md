@@ -6,6 +6,7 @@ Command-line client for the Swap3D developer API.
 npm install -g @swap3d/cli
 swap3d auth login --api-key sk_live_xxx
 swap3d convert ./model.obj --to glb --out ./model.glb
+swap3d usage
 ```
 
 You can also use it without installing:
@@ -23,12 +24,13 @@ swap3d auth status
 swap3d auth logout
 
 swap3d convert <file> --to glb [--out <file>]
-swap3d convert <file> --to glb --no-wait
+swap3d convert <file> --to glb --no-wait [--json]
 
 swap3d job status <jobId>
 swap3d job download <jobId> --out <file>
 
-swap3d formats
+swap3d usage [--json]
+swap3d formats [--json] [--offline]
 swap3d help
 ```
 
@@ -65,6 +67,8 @@ Override order:
 
 ## Current API Limits
 
+`swap3d formats` reads live API capability metadata from `/openapi/formats` when available and falls back to built-in metadata if the endpoint is unreachable. Use `swap3d formats --offline` to skip the API request.
+
 Target formats:
 
 - `glb`
@@ -97,5 +101,12 @@ Conversion is asynchronous: the CLI uploads the file, polls the job status, and 
 
 ```bash
 export SWAP3D_API_KEY=sk_live_xxx
-npx @swap3d/cli convert ./assets/model.obj --to glb --out ./dist/model.glb
+npx @swap3d/cli convert ./assets/model.obj --to glb --out ./dist/model.glb --json
+```
+
+Use JSON output for scripts:
+
+```bash
+swap3d usage --json
+swap3d job status <jobId> --json
 ```
