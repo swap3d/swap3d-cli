@@ -1,0 +1,492 @@
+#!/usr/bin/env node
+import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import process from 'node:process';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import { pathToFileURL } from 'node:url';
+
+export const VERSION = '0.1.0';
+export const DEFAULT_API_URL = 'https://api.swap3d.studio/api/v1';
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+export const TARGET_FORMATS = ['glb', 'gltf', 'glb2', 'gltf2'];
+export const SOURCE_EXTENSIONS = [
+  'obj',
+  'glb',
+  'gltf',
+  'fbx',
+  'dae',
+  'stl',
+  'ply',
+  '3ds',
+  'blend',
+  'step',
+  'stp',
+  'iges',
+  'igs',
+  'brep',
+];
+
+class CliError extends Error {
+  constructor(message, { exitCode = 1 } = {}) {
+    super(message);
+    this.name = 'CliError';
+    this.exitCode = exitCode;
+  }
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function getConfigPath(env = process.env) {
+  const baseDir = env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
+  return path.join(baseDir, 'swap3d', 'config.json');
+}
+
+export async function readConfig(env = process.env) {
+  const configPath = getConfigPath(env);
+  try {
+    return JSON.parse(await fs.readFile(configPath, 'utf8'));
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return {};
+    }
+    throw new CliError(`Failed to read config: ${error.message}`);
+  }
+}
+
+export async function writeConfig(config, env = process.env) {
+  const configPath = getConfigPath(env);
+  await fs.mkdir(path.dirname(configPath), { recursive: true, mode: 0o700 });
+  await fs.writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  await fs.chmod(configPath, 0o600).catch(() => undefined);
+  return configPath;
+}
+
+export function parseArgs(args) {
+  const positionals = [];
+  const options = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--') {
+      positionals.push(...args.slice(index + 1));
+      break;
+    }
+
+    if (!arg.startsWith('--') || arg === '-') {
+      positionals.push(arg);
+      continue;
+    }
+
+    const [rawKey, inlineValue] = arg.slice(2).split(/=(.*)/s, 2);
+    const key = rawKey.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+
+    if (inlineValue !== undefined) {
+      options[key] = inlineValue;
+      continue;
+    }
+
+    const next = args[index + 1];
+    if (next && !next.startsWith('--')) {
+      options[key] = next;
+      index += 1;
+    } else {
+      options[key] = true;
+    }
+  }
+
+  return { positionals, options };
+}
+
+function normalizeApiUrl(apiUrl) {
+  const value = String(apiUrl || DEFAULT_API_URL).trim();
+  if (!value) {
+    return DEFAULT_API_URL;
+  }
+  return value.replace(/\/+$/, '');
+}
+
+async function resolveRuntime(options = {}, env = process.env) {
+  const config = await readConfig(env);
+  const apiKey = options.apiKey || env.SWAP3D_API_KEY || config.apiKey || null;
+  const apiUrl = normalizeApiUrl(options.apiUrl || env.SWAP3D_API_URL || config.apiUrl || DEFAULT_API_URL);
+
+  return {
+    apiKey,
+    apiUrl,
+    config,
+    apiKeySource: options.apiKey ? 'option' : env.SWAP3D_API_KEY ? 'environment' : config.apiKey ? 'config' : null,
+    apiUrlSource: options.apiUrl ? 'option' : env.SWAP3D_API_URL ? 'environment' : config.apiUrl ? 'config' : 'default',
+  };
+}
+
+function requireApiKey(runtime) {
+  if (!runtime.apiKey) {
+    throw new CliError('Missing API key. Run `swap3d auth login --api-key <key>` or set SWAP3D_API_KEY.');
+  }
+}
+
+function makeApiUrl(apiUrl, pathname) {
+  return `${normalizeApiUrl(apiUrl)}${pathname.startsWith('/') ? pathname : `/${pathname}`}`;
+}
+
+async function parseApiResponse(response) {
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+  return response.text();
+}
+
+function getApiErrorMessage(payload, fallback) {
+  if (!payload) {
+    return fallback;
+  }
+  if (typeof payload === 'string') {
+    return payload || fallback;
+  }
+  return payload.error?.message || payload.message || fallback;
+}
+
+async function fetchJson(url, options) {
+  const response = await fetch(url, options);
+  const payload = await parseApiResponse(response);
+  if (!response.ok) {
+    throw new CliError(getApiErrorMessage(payload, `Request failed with HTTP ${response.status}`));
+  }
+  return payload;
+}
+
+function validateNodeVersion() {
+  const major = Number(process.versions.node.split('.')[0]);
+  if (major < 18) {
+    throw new CliError('Swap3D CLI requires Node.js 18 or newer.');
+  }
+}
+
+function validateTargetFormat(targetFormat) {
+  const normalized = String(targetFormat || '').toLowerCase();
+  if (!TARGET_FORMATS.includes(normalized)) {
+    throw new CliError(`Unsupported target format: ${targetFormat || '(missing)'}. Supported: ${TARGET_FORMATS.join(', ')}`);
+  }
+  return normalized;
+}
+
+async function validateInputFile(filePath) {
+  if (!filePath) {
+    throw new CliError('Missing input file.');
+  }
+
+  const absolutePath = path.resolve(filePath);
+  const stat = await fs.stat(absolutePath).catch((error) => {
+    if (error?.code === 'ENOENT') {
+      throw new CliError(`Input file not found: ${filePath}`);
+    }
+    throw error;
+  });
+
+  if (!stat.isFile()) {
+    throw new CliError(`Input path is not a file: ${filePath}`);
+  }
+
+  if (stat.size > MAX_UPLOAD_BYTES) {
+    throw new CliError(`Input file exceeds the 100 MB API upload limit: ${filePath}`);
+  }
+
+  const extension = path.extname(absolutePath).slice(1).toLowerCase();
+  if (!SOURCE_EXTENSIONS.includes(extension)) {
+    throw new CliError(`Unsupported source extension: .${extension || 'unknown'}. Supported: ${SOURCE_EXTENSIONS.join(', ')}`);
+  }
+
+  return { absolutePath, size: stat.size, extension };
+}
+
+function defaultOutputPath(inputFile, targetFormat) {
+  const parsed = path.parse(inputFile);
+  const extension = targetFormat === 'gltf2' ? 'gltf' : targetFormat === 'glb2' ? 'glb' : targetFormat;
+  return path.join(parsed.dir, `${parsed.name}.${extension}`);
+}
+
+export async function submitConversion({ apiUrl, apiKey, filePath, targetFormat }) {
+  const file = await validateInputFile(filePath);
+  const normalizedTargetFormat = validateTargetFormat(targetFormat);
+  const form = new FormData();
+  const bytes = await fs.readFile(file.absolutePath);
+  const blob = new Blob([bytes]);
+
+  form.append('targetFormat', normalizedTargetFormat);
+  form.append('file', blob, path.basename(file.absolutePath));
+
+  return fetchJson(makeApiUrl(apiUrl, '/openapi/convert'), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: form,
+  });
+}
+
+export async function getJobStatus({ apiUrl, apiKey, jobId }) {
+  if (!jobId) {
+    throw new CliError('Missing job id.');
+  }
+
+  return fetchJson(makeApiUrl(apiUrl, `/openapi/convert/status/${encodeURIComponent(jobId)}`), {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: 'application/json',
+    },
+  });
+}
+
+async function pollJob({ apiUrl, apiKey, jobId, intervalMs, timeoutMs, out }) {
+  const start = Date.now();
+  let lastStatus = null;
+
+  while (true) {
+    const status = await getJobStatus({ apiUrl, apiKey, jobId });
+    if (status.status !== lastStatus) {
+      out.write(`status: ${status.status}\n`);
+      lastStatus = status.status;
+    }
+
+    if (status.status === 'completed') {
+      return status;
+    }
+
+    if (status.status === 'failed') {
+      throw new CliError(`Conversion failed: ${status.error || 'unknown error'}`);
+    }
+
+    if (status.status === 'expired') {
+      throw new CliError(status.error?.message || 'Conversion output expired.');
+    }
+
+    if (Date.now() - start > timeoutMs) {
+      throw new CliError(`Timed out waiting for job ${jobId}.`);
+    }
+
+    await sleep(intervalMs);
+  }
+}
+
+function resolveDownloadUrl(apiUrl, downloadUrl) {
+  if (!downloadUrl) {
+    throw new CliError('Completed job did not include a download URL.');
+  }
+  return new URL(downloadUrl, `${normalizeApiUrl(apiUrl)}/`).toString();
+}
+
+export async function downloadResult({ apiUrl, downloadUrl, outFile }) {
+  const resolvedUrl = resolveDownloadUrl(apiUrl, downloadUrl);
+  const response = await fetch(resolvedUrl);
+  if (!response.ok) {
+    const payload = await parseApiResponse(response);
+    throw new CliError(getApiErrorMessage(payload, `Download failed with HTTP ${response.status}`));
+  }
+
+  await fs.mkdir(path.dirname(path.resolve(outFile)), { recursive: true });
+  await pipeline(Readable.fromWeb(response.body), fsSync.createWriteStream(outFile));
+}
+
+function printHelp(out = process.stdout) {
+  out.write(`Swap3D CLI ${VERSION}
+
+Usage:
+  swap3d auth login --api-key <key> [--api-url <url>]
+  swap3d auth status
+  swap3d auth logout
+  swap3d convert <file> --to glb [--out <file>] [--no-wait]
+  swap3d job status <jobId> [--json]
+  swap3d job download <jobId> --out <file>
+  swap3d formats
+
+Environment:
+  SWAP3D_API_KEY   API key for CI and non-interactive usage
+  SWAP3D_API_URL   API base URL, default ${DEFAULT_API_URL}
+`);
+}
+
+function printFormats(out = process.stdout) {
+  out.write(`Target formats:
+  ${TARGET_FORMATS.join(', ')}
+
+Source extensions:
+  ${SOURCE_EXTENSIONS.map((item) => `.${item}`).join(', ')}
+
+Upload limit:
+  100 MB
+`);
+}
+
+async function handleAuth(args, io, env) {
+  const { positionals, options } = parseArgs(args);
+  const action = positionals[0];
+
+  if (action === 'login') {
+    if (!options.apiKey) {
+      throw new CliError('Usage: swap3d auth login --api-key <key> [--api-url <url>]');
+    }
+    const current = await readConfig(env);
+    const next = {
+      ...current,
+      apiKey: String(options.apiKey),
+      apiUrl: normalizeApiUrl(options.apiUrl || current.apiUrl || DEFAULT_API_URL),
+    };
+    const configPath = await writeConfig(next, env);
+    io.out.write(`Saved API key to ${configPath}\n`);
+    return;
+  }
+
+  if (action === 'status') {
+    const runtime = await resolveRuntime(options, env);
+    io.out.write(`API URL: ${runtime.apiUrl} (${runtime.apiUrlSource})\n`);
+    io.out.write(`API key: ${runtime.apiKey ? `configured (${runtime.apiKeySource})` : 'not configured'}\n`);
+    return;
+  }
+
+  if (action === 'logout') {
+    const current = await readConfig(env);
+    delete current.apiKey;
+    const configPath = await writeConfig(current, env);
+    io.out.write(`Removed saved API key from ${configPath}\n`);
+    return;
+  }
+
+  throw new CliError('Usage: swap3d auth <login|status|logout>');
+}
+
+async function handleConvert(args, io, env) {
+  const { positionals, options } = parseArgs(args);
+  const inputFile = positionals[0];
+  const targetFormat = validateTargetFormat(options.to || options.targetFormat);
+  const runtime = await resolveRuntime(options, env);
+  requireApiKey(runtime);
+
+  const result = await submitConversion({
+    apiUrl: runtime.apiUrl,
+    apiKey: runtime.apiKey,
+    filePath: inputFile,
+    targetFormat,
+  });
+
+  io.out.write(`jobId: ${result.jobId}\n`);
+
+  if (options.noWait) {
+    io.out.write(`statusUrl: ${result.statusUrl}\n`);
+    return;
+  }
+
+  const status = await pollJob({
+    apiUrl: runtime.apiUrl,
+    apiKey: runtime.apiKey,
+    jobId: result.jobId,
+    intervalMs: Number(options.pollInterval || 2000),
+    timeoutMs: Number(options.timeout || 15 * 60 * 1000),
+    out: io.out,
+  });
+
+  const outFile = options.out || defaultOutputPath(inputFile, targetFormat);
+  await downloadResult({
+    apiUrl: runtime.apiUrl,
+    downloadUrl: status.result?.downloadUrl,
+    outFile,
+  });
+  io.out.write(`downloaded: ${outFile}\n`);
+}
+
+async function handleJob(args, io, env) {
+  const { positionals, options } = parseArgs(args);
+  const action = positionals[0];
+  const jobId = positionals[1];
+  const runtime = await resolveRuntime(options, env);
+  requireApiKey(runtime);
+
+  if (action === 'status') {
+    const status = await getJobStatus({ apiUrl: runtime.apiUrl, apiKey: runtime.apiKey, jobId });
+    if (options.json) {
+      io.out.write(`${JSON.stringify(status, null, 2)}\n`);
+    } else {
+      io.out.write(`status: ${status.status}\n`);
+      if (status.status === 'completed') {
+        io.out.write(`targetFormat: ${status.result?.targetFormat || 'unknown'}\n`);
+        if (status.result?.outputExpiresAt) {
+          io.out.write(`outputExpiresAt: ${status.result.outputExpiresAt}\n`);
+        }
+      }
+      if (status.error) {
+        io.out.write(`error: ${typeof status.error === 'string' ? status.error : status.error.message}\n`);
+      }
+    }
+    return;
+  }
+
+  if (action === 'download') {
+    const outFile = options.out;
+    if (!outFile) {
+      throw new CliError('Usage: swap3d job download <jobId> --out <file>');
+    }
+    const status = await getJobStatus({ apiUrl: runtime.apiUrl, apiKey: runtime.apiKey, jobId });
+    if (status.status !== 'completed') {
+      throw new CliError(`Job is not completed. Current status: ${status.status}`);
+    }
+    await downloadResult({ apiUrl: runtime.apiUrl, downloadUrl: status.result?.downloadUrl, outFile });
+    io.out.write(`downloaded: ${outFile}\n`);
+    return;
+  }
+
+  throw new CliError('Usage: swap3d job <status|download> <jobId>');
+}
+
+export async function runCli(argv = process.argv.slice(2), io = { out: process.stdout, err: process.stderr }, env = process.env) {
+  validateNodeVersion();
+  const [command, ...rest] = argv;
+
+  if (!command || command === 'help' || command === '--help' || command === '-h') {
+    printHelp(io.out);
+    return 0;
+  }
+
+  if (command === '--version' || command === '-v' || command === 'version') {
+    io.out.write(`${VERSION}\n`);
+    return 0;
+  }
+
+  if (command === 'formats') {
+    printFormats(io.out);
+    return 0;
+  }
+
+  if (command === 'auth') {
+    await handleAuth(rest, io, env);
+    return 0;
+  }
+
+  if (command === 'convert') {
+    await handleConvert(rest, io, env);
+    return 0;
+  }
+
+  if (command === 'job') {
+    await handleJob(rest, io, env);
+    return 0;
+  }
+
+  throw new CliError(`Unknown command: ${command}`);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  runCli().then((exitCode) => {
+    process.exitCode = exitCode;
+  }).catch((error) => {
+    if (error instanceof CliError) {
+      process.stderr.write(`Error: ${error.message}\n`);
+      process.exitCode = error.exitCode;
+      return;
+    }
+    process.stderr.write(`${error.stack || error.message}\n`);
+    process.exitCode = 1;
+  });
+}

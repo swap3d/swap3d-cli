@@ -1,0 +1,30 @@
+{
+  "name": "@swap3d/cli",
+  "version": "0.1.0",
+  "description": "Command-line client for the Swap3D developer API.",
+  "type": "module",
+  "bin": {
+    "swap3d": "./src/cli.mjs"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "smoke:local": "node src/cli.mjs formats"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "swap3d",
+    "3d",
+    "conversion",
+    "gltf",
+    "glb",
+    "cli"
+  ],
+  "license": "MIT"
+}
