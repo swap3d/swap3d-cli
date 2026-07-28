@@ -1,67 +1,97 @@
-# Swap3D CLI Release Plan
+# Swap3D CLI Release Guide
 
-## Goal
+## Release Model
 
-Publish `@swap3d/cli` as the official command-line client for the Swap3D developer API.
+One semantic version identifies all distribution channels:
 
-## Current Scope
+- npm package `@swap3d/cli`
+- GitHub Release tag and standalone archives
+- shell and PowerShell installers
+- Homebrew cask
 
-- API-key authentication
-- async conversion upload
-- job status polling
-- result download
-- supported format listing
+The release workflow is `.github/workflows/publish.yml`. npm Trusted Publishing
+must continue to authorize that exact filename.
 
 ## Release Gates
 
-- [x] package name and GitHub repository are aligned: `@swap3d/cli` / `swap3d/swap3d-cli`
+- [x] package name and repository are aligned
 - [x] package has no runtime dependencies
-- [x] package requires Node.js 18+
-- [x] package contents are constrained by `files`
-- [x] package source is licensed under Apache-2.0
-- [x] GitHub Actions test workflow passes on `main`
-- [ ] npm trusted publisher is configured for `swap3d/swap3d-cli`
-- [x] first npm publish succeeds with public access
-- [x] package install smoke passes through npm:
+- [x] Node.js 18/20/22/24 tests pass
+- [x] standalone binaries build for all supported targets
+- [x] archives contain Apache-2.0 license and notice files
+- [x] shell installer completes a checksum-verified local install
+- [x] generated Homebrew cask passes `brew style` and `brew audit`
+- [x] `swap3d/homebrew-tap` exists with automatic synchronization
+- [ ] npm Trusted Publisher succeeds without a traditional token
+- [ ] `swap3d/swap3d-cli` is public
+- [ ] the production `v0.2.0` cross-platform release workflow passes
+- [ ] npm and Homebrew installation smoke tests pass against `v0.2.0`
+
+## Prepare A Release
+
+1. Update the version in:
+
+   - `package.json`
+   - `package-lock.json`
+   - `src/cli.mjs`
+
+2. Move changelog entries into a dated version section.
+3. Verify locally:
 
 ```bash
-npm install -g @swap3d/cli
-swap3d formats
+npm test
+npm pack --dry-run
+npx bun@1.3.14 scripts/build-standalone.mjs --all
+npm run package:standalone
+npm run generate:homebrew
+node scripts/verify-release-version.mjs v0.2.0
 ```
 
-## npm Publishing
+4. Push `main` and wait for the Test workflow.
+5. Create and push an annotated `vX.Y.Z` tag.
 
-The package is scoped, so first publish must be public:
+The tag runs tests, builds and packages every target, verifies native x64/arm64
+executables on GitHub-hosted runners, creates the GitHub Release, and publishes
+the npm package through OIDC.
 
-```bash
-npm publish --access public
+## Homebrew
+
+Each GitHub Release includes `swap3d.rb`, generated from the SHA-256 values of
+the macOS archives. The public `swap3d/homebrew-tap` workflow checks every six
+hours, validates a changed cask with Homebrew, and commits it automatically.
+No cross-repository write token is required.
+
+## Installer URLs
+
+Canonical release assets:
+
+```text
+https://github.com/swap3d/swap3d-cli/releases/latest/download/install.sh
+https://github.com/swap3d/swap3d-cli/releases/latest/download/install.ps1
 ```
 
-Preferred publishing path:
+The branded `swap3d.studio` URLs should redirect to these assets only after the
+first standalone release is healthy.
 
-1. Create or verify npm organization `swap3d`.
-2. Ensure the npm account has publish access to `@swap3d`.
-3. Configure npm Trusted Publisher:
-   - Package: `@swap3d/cli`
-   - Publisher: GitHub Actions
-   - Repository: `swap3d/swap3d-cli`
-   - Workflow: `publish.yml`
-4. Publish by creating a GitHub release or manually running the publish workflow.
+## Rollback
 
-The publish workflow uses Node.js 24 and upgrades to the latest npm CLI before publishing so the GitHub Actions environment satisfies npm trusted publishing requirements.
+Published npm versions and immutable release assets are not overwritten.
+
+For a broken release:
+
+1. deprecate the npm version with a message pointing to the last healthy or
+   fixed version
+2. publish a patch release from a new tag
+3. verify the Homebrew tap advances to the patch
+4. keep the broken release available for auditability unless it exposes a
+   security-sensitive artifact
+
+Users can pin the shell installer with `--version X.Y.Z`, set
+`SWAP3D_VERSION=X.Y.Z` for PowerShell, or install a specific npm version.
 
 ## Provenance
 
 npm automatically generates provenance when a public package is published from
-a public GitHub repository through Trusted Publishing. No explicit
-`--provenance` flag is required. Private repositories can use Trusted
-Publishing, but npm does not generate provenance for those releases.
-
-## Next Feature Gates
-
-- [x] backend exposes API-key authenticated `GET /openapi/usage`
-- [x] backend exposes machine-readable `GET /openapi/formats`
-- [x] CLI supports `swap3d usage`
-- [x] CLI `formats` can read live API capability metadata and fall back to built-in metadata
-- [x] CLI commands support `--json` for automation
-- [ ] production smoke can run against a dedicated test API key
+a public GitHub repository through Trusted Publishing. Private repositories can
+use Trusted Publishing, but npm does not generate provenance for those
+releases.

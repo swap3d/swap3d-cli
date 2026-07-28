@@ -84,6 +84,39 @@ The repository is licensed under Apache-2.0. Keep `package.json`, `LICENSE`,
 npm test
 node src/cli.mjs formats
 node src/cli.mjs auth status
+npx bun@1.3.14 scripts/build-standalone.mjs
 ```
 
 The CLI intentionally has no runtime dependencies at MVP stage and requires Node.js 18+.
+
+## Distribution
+
+The npm package and standalone binaries use the same `src/cli.mjs` entrypoint.
+Standalone builds use Bun 1.3.14 with `.env` autoloading disabled.
+
+Supported standalone targets:
+
+- macOS x64 and arm64
+- Linux glibc x64 and arm64
+- Linux musl x64 and arm64
+- Windows x64 and arm64
+
+Release rules:
+
+- `package.json`, `package-lock.json`, `src/cli.mjs`, and `CHANGELOG.md` must
+  declare the same release version
+- only a `vX.Y.Z` tag may trigger `.github/workflows/publish.yml`
+- release archives must include `LICENSE`, `NOTICE`, and `README.md`
+- installers must verify the matching entry in `SHA256SUMS`
+- npm publishing must use the `publish.yml` Trusted Publisher
+- the generated `swap3d.rb` release asset is synchronized by
+  `swap3d/homebrew-tap`; do not hand-edit cask checksums
+
+Relevant commands:
+
+```bash
+npx bun@1.3.14 scripts/build-standalone.mjs --all
+npm run package:standalone
+npm run generate:homebrew
+node scripts/verify-release-version.mjs v0.2.0
+```

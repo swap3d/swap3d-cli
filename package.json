@@ -1,6 +1,6 @@
 {
   "name": "@swap3d/cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Command-line client for the Swap3D developer API.",
   "type": "module",
   "bin": {
@@ -22,6 +22,10 @@
     "NOTICE"
   ],
   "scripts": {
+    "build:standalone": "bun scripts/build-standalone.mjs",
+    "build:standalone:all": "bun scripts/build-standalone.mjs --all",
+    "generate:homebrew": "node scripts/generate-homebrew-cask.mjs",
+    "package:standalone": "node scripts/package-standalone.mjs",
     "test": "node --test",
     "smoke:local": "node src/cli.mjs formats"
   },

@@ -28,3 +28,41 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm pack --dry-run
+
+  standalone:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+      - run: bun scripts/build-standalone.mjs --target linux-x64
+      - run: ./dist/standalone/swap3d-linux-x64 --version
+      - run: ./dist/standalone/swap3d-linux-x64 formats --offline
+
+  installer-syntax:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - if: runner.os != 'Windows'
+        run: sh -n install/install.sh
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: '[scriptblock]::Create((Get-Content -Raw install/install.ps1)) | Out-Null'
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          try {
+            & ./install/install.ps1 -Version not-a-version
+            throw 'Installer accepted an invalid version.'
+          } catch {
+            if ($_.Exception.Message -eq 'Installer accepted an invalid version.') {
+              throw
+            }
+            Write-Host 'PowerShell installer rejected an invalid version.'
+          }

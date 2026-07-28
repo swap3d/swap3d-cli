@@ -2,17 +2,65 @@
 
 Command-line client for the Swap3D developer API.
 
+## Install
+
+### npm
+
 ```bash
 npm install -g @swap3d/cli
+swap3d --version
+```
+
+You can also run the package without a global installation:
+
+```bash
+npx @swap3d/cli formats
+```
+
+### macOS And Linux
+
+The standalone installer does not require Node.js:
+
+```bash
+curl -fsSL https://github.com/swap3d/swap3d-cli/releases/latest/download/install.sh | sh
+```
+
+Install a specific version or directory:
+
+```bash
+curl -fsSL https://github.com/swap3d/swap3d-cli/releases/latest/download/install.sh |
+  sh -s -- --version 0.2.0 --install-dir "$HOME/.local/bin"
+```
+
+### Windows
+
+Run from Windows PowerShell without administrator privileges:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -c "irm https://github.com/swap3d/swap3d-cli/releases/latest/download/install.ps1 | iex"
+```
+
+The execution-policy override applies only to that PowerShell process. The
+installer verifies the release checksum and adds its user-local installation
+directory to the user `PATH`.
+
+### Homebrew
+
+```bash
+brew install --cask swap3d/tap/swap3d
+```
+
+## Quickstart
+
+```bash
 swap3d auth login --api-key sk_live_xxx
 swap3d convert ./model.obj --to glb --out ./model.glb
 swap3d usage
 ```
 
-You can also use it without installing:
+For CI, prefer an environment variable instead of saving a local config:
 
 ```bash
-npx @swap3d/cli formats
 SWAP3D_API_KEY=sk_live_xxx npx @swap3d/cli convert ./model.obj --to glb
 ```
 
