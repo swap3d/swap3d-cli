@@ -16,7 +16,9 @@
   "homepage": "https://swap3d.studio",
   "files": [
     "src",
+    "assets",
     "README.md",
+    "CONTRIBUTING.md",
     "CHANGELOG.md",
     "LICENSE",
     "NOTICE"

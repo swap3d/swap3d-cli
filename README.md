@@ -1,9 +1,23 @@
-<p align="center"><strong>Swap3D CLI</strong> converts 3D files from your terminal using the Swap3D developer API.</p>
+<h1 align="center">Swap3D CLI</h1>
+
+<p align="center">Convert 3D files from your terminal with the Swap3D developer API.</p>
 
 <p align="center">
-  <a href="https://swap3d.studio">Web converter</a> ·
-  <a href="https://swap3d.studio/dashboard/api">API keys</a> ·
-  <a href="https://github.com/swap3d/swap3d-cli/releases/latest">Latest release</a>
+  <a href="https://www.npmjs.com/package/@swap3d/cli"><img alt="npm version" src="https://img.shields.io/npm/v/%40swap3d%2Fcli?style=flat-square&label=npm" /></a>
+  <a href="https://github.com/swap3d/swap3d-cli/actions/workflows/test.yml"><img alt="Test status" src="https://img.shields.io/github/actions/workflow/status/swap3d/swap3d-cli/test.yml?branch=main&style=flat-square&label=tests" /></a>
+  <a href="LICENSE"><img alt="Apache-2.0 license" src="https://img.shields.io/github/license/swap3d/swap3d-cli?style=flat-square" /></a>
+</p>
+
+<p align="center">
+  <a href="https://swap3d.studio">Website</a> ·
+  <a href="https://swap3d.studio/developer-api">Documentation</a> ·
+  <a href="https://github.com/swap3d/swap3d-cli/releases/latest">Releases</a>
+</p>
+
+<p align="center">
+  <a href="https://swap3d.studio/developer-api">
+    <img src="assets/readme-terminal.png" alt="Swap3D CLI converting an OBJ model to GLB" width="600px" />
+  </a>
 </p>
 
 ---
@@ -187,13 +201,12 @@ Upgrade Homebrew installations with:
 brew upgrade swap3d
 ```
 
-## Documentation
+## Contributing
 
-- [Swap3D](https://swap3d.studio)
-- [Developer API](https://swap3d.studio/developer-api)
-- [Release guide](docs/release-plan.md)
-- [Distribution architecture](docs/distribution-plan.md)
-- [Issues and feature requests](https://github.com/swap3d/swap3d-cli/issues)
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before
+opening a pull request. Use [GitHub Issues](https://github.com/swap3d/swap3d-cli/issues)
+for bugs and feature requests, and follow [SECURITY.md](SECURITY.md) for
+vulnerability reports.
 
 ## License
 
