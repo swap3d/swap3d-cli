@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { promisify } from 'node:util';
 import {
   DEFAULT_API_URL,
   downloadResult,
@@ -15,6 +17,8 @@ import {
   submitConversion,
   writeConfig,
 } from '../src/cli.mjs';
+
+const execFileAsync = promisify(execFile);
 
 function createBufferWriter() {
   let value = '';
@@ -329,6 +333,18 @@ test('formats command falls back to built-in metadata', async () => {
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('CLI entrypoint runs when invoked through a package-style symlink', async () => {
+  const tempDir = await createTempDir();
+  const linkPath = path.join(tempDir, 'swap3d');
+
+  await fs.symlink(path.resolve('src/cli.mjs'), linkPath);
+
+  const { stdout } = await execFileAsync(process.execPath, [linkPath, 'formats', '--offline']);
+
+  assert.match(stdout, /Target formats:/);
+  assert.match(stdout, /Source:/);
 });
 
 test('downloadResult writes response bytes to disk', async () => {

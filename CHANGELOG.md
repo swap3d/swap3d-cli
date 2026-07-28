@@ -4,7 +4,11 @@ All notable changes to this package will be documented in this file.
 
 This project follows semantic versioning once the package is published to npm.
 
-## 0.1.0 - Unreleased
+## 0.1.1 - 2026-07-28
+
+- Fixed npm bin execution when `swap3d` is installed as a package symlink.
+
+## 0.1.0 - 2026-07-28
 
 - Initial CLI package.
 - Added API-key authentication commands.

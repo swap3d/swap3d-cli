@@ -6,9 +6,9 @@ import path from 'node:path';
 import process from 'node:process';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';
 export const DEFAULT_API_URL = 'https://api.swap3d.studio/api/v1';
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 export const TARGET_FORMATS = ['glb', 'gltf', 'glb2', 'gltf2'];
@@ -612,7 +612,19 @@ export async function runCli(argv = process.argv.slice(2), io = { out: process.s
   throw new CliError(`Unknown command: ${command}`);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+function isCliEntrypoint() {
+  if (!process.argv[1]) {
+    return false;
+  }
+
+  try {
+    return fsSync.realpathSync(fileURLToPath(import.meta.url)) === fsSync.realpathSync(process.argv[1]);
+  } catch {
+    return fileURLToPath(import.meta.url) === process.argv[1];
+  }
+}
+
+if (isCliEntrypoint()) {
   runCli().then((exitCode) => {
     process.exitCode = exitCode;
   }).catch((error) => {
