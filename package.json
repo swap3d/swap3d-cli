@@ -1,7 +1,7 @@
 {
   "name": "@swap3d/cli",
-  "version": "0.2.2",
-  "description": "Command-line client for the Swap3D developer API.",
+  "version": "0.2.3",
+  "description": "Convert 3D files from your terminal with the Swap3D API.",
   "type": "module",
   "bin": {
     "swap3d": "./src/cli.mjs"
@@ -13,7 +13,7 @@
   "bugs": {
     "url": "https://github.com/swap3d/swap3d-cli/issues"
   },
-  "homepage": "https://github.com/swap3d/swap3d-cli#readme",
+  "homepage": "https://swap3d.studio",
   "files": [
     "src",
     "README.md",

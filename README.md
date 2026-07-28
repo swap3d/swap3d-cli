@@ -1,165 +1,201 @@
-# Swap3D CLI
+<p align="center"><strong>Swap3D CLI</strong> converts 3D files from your terminal using the Swap3D developer API.</p>
 
-Command-line client for the Swap3D developer API.
+<p align="center">
+  <a href="https://swap3d.studio">Web converter</a> ·
+  <a href="https://swap3d.studio/dashboard/api">API keys</a> ·
+  <a href="https://github.com/swap3d/swap3d-cli/releases/latest">Latest release</a>
+</p>
 
-## Install
+---
 
-### npm
+## Quickstart
 
-```bash
-npm install -g @swap3d/cli
-swap3d --version
-```
+### Install Swap3D CLI
 
-You can also run the package without a global installation:
+Run the following on macOS or Linux:
 
-```bash
-npx @swap3d/cli formats
-```
-
-### macOS And Linux
-
-The standalone installer does not require Node.js:
-
-```bash
+```shell
 curl -fsSL https://swap3d.studio/install.sh | sh
 ```
 
-Install a specific version or directory:
-
-```bash
-curl -fsSL https://swap3d.studio/install.sh |
-  sh -s -- --version 0.2.2 --install-dir "$HOME/.local/bin"
-```
-
-### Windows
-
-Run from Windows PowerShell without administrator privileges:
+Run the following in Windows PowerShell:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -c "irm https://swap3d.studio/install.ps1 | iex"
 ```
 
-The execution-policy override applies only to that PowerShell process. The
-installer verifies the release checksum and adds its user-local installation
-directory to the user `PATH`.
+The standalone installers do not require Node.js. They select the correct
+binary for your platform, verify its SHA-256 checksum, and install it without
+administrator privileges.
 
-### Homebrew
+Swap3D CLI is also available through npm and Homebrew:
 
-```bash
+```shell
+# Install using npm (Node.js 18 or newer)
+npm install -g @swap3d/cli
+
+# Install using Homebrew
 brew install swap3d/tap/swap3d
 ```
 
-## Quickstart
+You can run the npm package without installing it globally:
 
-```bash
-swap3d auth login --api-key sk_live_xxx
-swap3d convert ./model.obj --to glb --out ./model.glb
-swap3d usage
+```shell
+npx @swap3d/cli formats
 ```
 
-For CI, prefer an environment variable instead of saving a local config:
+<details>
+<summary>Download a standalone binary from GitHub Releases</summary>
 
-```bash
-SWAP3D_API_KEY=sk_live_xxx npx @swap3d/cli convert ./model.obj --to glb
+The [latest GitHub Release](https://github.com/swap3d/swap3d-cli/releases/latest)
+includes:
+
+- macOS
+  - Apple Silicon: `swap3d-darwin-arm64.tar.gz`
+  - Intel: `swap3d-darwin-x64.tar.gz`
+- Linux
+  - x64 glibc: `swap3d-linux-x64.tar.gz`
+  - x64 musl: `swap3d-linux-x64-musl.tar.gz`
+  - arm64 glibc: `swap3d-linux-arm64.tar.gz`
+  - arm64 musl: `swap3d-linux-arm64-musl.tar.gz`
+- Windows
+  - x64: `swap3d-windows-x64.zip`
+  - arm64: `swap3d-windows-arm64.zip`
+
+Verify manual downloads against the `SHA256SUMS` file in the same release.
+
+</details>
+
+### Convert your first model
+
+Create an API key in the [Swap3D dashboard](https://swap3d.studio/dashboard/api),
+then save it locally:
+
+```shell
+swap3d auth login --api-key <your-api-key>
+```
+
+Convert a model:
+
+```shell
+swap3d convert ./model.obj --to glb --out ./model.glb
+```
+
+Swap3D uploads the source file, waits for the asynchronous conversion to
+finish, and downloads the result to the requested path.
+
+For CI and other non-interactive environments, provide the key without writing
+a local config file:
+
+```shell
+SWAP3D_API_KEY=<your-api-key> \
+  npx @swap3d/cli convert ./model.obj --to glb --out ./model.glb
 ```
 
 ## Commands
 
-```bash
-swap3d auth login --api-key <key> [--api-url <url>]
-swap3d auth status
-swap3d auth logout
+| Command | Description |
+| --- | --- |
+| `swap3d auth login` | Save an API key and optional API URL |
+| `swap3d auth status` | Show the active authentication configuration |
+| `swap3d auth logout` | Remove the saved API key |
+| `swap3d convert` | Submit a conversion and download the result |
+| `swap3d job status` | Check an asynchronous conversion job |
+| `swap3d job download` | Download a completed conversion |
+| `swap3d usage` | Show the current plan and monthly API usage |
+| `swap3d formats` | Show supported formats and the upload limit |
 
-swap3d convert <file> --to glb [--out <file>]
-swap3d convert <file> --to glb --no-wait [--json]
-
-swap3d job status <jobId>
-swap3d job download <jobId> --out <file>
-
-swap3d usage [--json]
-swap3d formats [--json] [--offline]
-swap3d help
-```
+Run `swap3d --help` for command syntax.
 
 ## Authentication
 
-The CLI uses Swap3D API keys. Resolution order:
+Swap3D CLI resolves credentials in this order:
 
 1. `--api-key`
 2. `SWAP3D_API_KEY`
-3. saved config from `swap3d auth login`
+3. the key saved by `swap3d auth login`
 
-Saved config lives at:
+Saved configuration lives at `~/.config/swap3d/config.json`. The CLI writes
+the file with `0600` permissions on supported platforms.
 
-```text
-~/.config/swap3d/config.json
-```
-
-The CLI writes this file with `0600` permissions when the platform supports it.
-
-## API URL
-
-Default:
+The default API endpoint is:
 
 ```text
 https://api.swap3d.studio/api/v1
 ```
 
-Override order:
+Override it with `--api-url`, `SWAP3D_API_URL`, or the value saved during
+`swap3d auth login`.
 
-1. `--api-url`
-2. `SWAP3D_API_URL`
-3. saved config
-4. default production URL
+## Automation
 
-## Current API Limits
+Use `--json` for machine-readable output:
 
-`swap3d formats` reads live API capability metadata from `/openapi/formats` when available and falls back to built-in metadata if the endpoint is unreachable. Use `swap3d formats --offline` to skip the API request.
-
-Target formats:
-
-- `glb`
-- `gltf`
-- `glb2`
-- `gltf2`
-
-Source extensions:
-
-- `obj`
-- `glb`
-- `gltf`
-- `fbx`
-- `dae`
-- `stl`
-- `ply`
-- `3ds`
-- `blend`
-- `step`
-- `stp`
-- `iges`
-- `igs`
-- `brep`
-
-Upload limit: `100 MB`.
-
-Conversion is asynchronous: the CLI uploads the file, polls the job status, and downloads the result when it is ready.
-
-## CI Example
-
-```bash
-export SWAP3D_API_KEY=sk_live_xxx
-npx @swap3d/cli convert ./assets/model.obj --to glb --out ./dist/model.glb --json
-```
-
-Use JSON output for scripts:
-
-```bash
+```shell
 swap3d usage --json
-swap3d job status <jobId> --json
+swap3d job status <job-id> --json
 ```
+
+Submit a job without waiting for it:
+
+```shell
+swap3d convert ./model.obj --to glb --no-wait --json
+```
+
+Then inspect or download it later:
+
+```shell
+swap3d job status <job-id> --json
+swap3d job download <job-id> --out ./model.glb
+```
+
+## Formats And Limits
+
+Run the following to read current capabilities from the API:
+
+```shell
+swap3d formats
+```
+
+Use `swap3d formats --offline` to display the CLI's built-in capability
+metadata without making a network request.
+
+The current API accepts source files up to 100 MB and converts to GLB or glTF
+variants. The live `formats` command is the source of truth as capabilities
+evolve.
+
+## Installation Options
+
+Install a specific standalone version or choose another directory:
+
+```shell
+curl -fsSL https://swap3d.studio/install.sh |
+  sh -s -- --version 0.2.3 --install-dir "$HOME/.local/bin"
+```
+
+PowerShell supports the equivalent parameters:
+
+```powershell
+$env:SWAP3D_VERSION = "0.2.3"
+$env:SWAP3D_INSTALL_DIR = "$HOME\bin"
+irm https://swap3d.studio/install.ps1 | iex
+```
+
+Upgrade Homebrew installations with:
+
+```shell
+brew upgrade swap3d
+```
+
+## Documentation
+
+- [Swap3D](https://swap3d.studio)
+- [Developer API](https://swap3d.studio/developer-api)
+- [Release guide](docs/release-plan.md)
+- [Distribution architecture](docs/distribution-plan.md)
+- [Issues and feature requests](https://github.com/swap3d/swap3d-cli/issues)
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and
-[NOTICE](NOTICE).
+This repository is licensed under the [Apache-2.0 License](LICENSE). See
+[NOTICE](NOTICE) for attribution information.

@@ -45,7 +45,7 @@ npm pack --dry-run
 npx bun@1.3.14 scripts/build-standalone.mjs --all
 npm run package:standalone
 npm run generate:homebrew
-node scripts/verify-release-version.mjs v0.2.2
+node scripts/verify-release-version.mjs v0.2.3
 ```
 
 4. Push `main` and wait for the Test workflow.

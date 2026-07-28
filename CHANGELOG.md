@@ -4,6 +4,12 @@ All notable changes to this package will be documented in this file.
 
 This project follows semantic versioning once the package is published to npm.
 
+## 0.2.3 - 2026-07-28
+
+- Reworked the README around installation, first conversion, authentication,
+  automation, and direct binary downloads.
+- Clarified the package and repository description.
+
 ## 0.2.2 - 2026-07-28
 
 - Enabled immutable GitHub Releases and added a release-workflow assertion
