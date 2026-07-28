@@ -29,8 +29,8 @@ jobs:
       - run: npm pack --dry-run
       - run: bun scripts/build-standalone.mjs --all
       - run: node scripts/package-standalone.mjs
-      - run: node scripts/generate-homebrew-cask.mjs --out dist/release/swap3d.rb
-      - uses: actions/upload-artifact@v4
+      - run: node scripts/generate-homebrew-formula.mjs --out dist/release/swap3d.rb
+      - uses: actions/upload-artifact@v7
         with:
           name: release-assets
           path: dist/release/*
@@ -67,7 +67,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: release-assets
           path: dist/release
@@ -92,7 +92,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: release-assets
           path: dist/release
@@ -134,3 +134,68 @@ jobs:
           else
             npm publish --access public
           fi
+
+  installer-smoke:
+    needs: github-release
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-15
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - if: runner.os != 'Windows'
+        shell: bash
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          curl -fsSL "https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/install.sh" \
+            -o "${RUNNER_TEMP}/install.sh"
+          sh "${RUNNER_TEMP}/install.sh" \
+            --version "${VERSION}" \
+            --install-dir "${RUNNER_TEMP}/swap3d-bin"
+          "${RUNNER_TEMP}/swap3d-bin/swap3d" --version
+          "${RUNNER_TEMP}/swap3d-bin/swap3d" formats --offline
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'install.ps1'
+          $installDir = Join-Path $env:RUNNER_TEMP 'swap3d-bin'
+          Invoke-WebRequest `
+            -Uri "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:VERSION/install.ps1" `
+            -OutFile $installer
+          & $installer -Version $env:VERSION -InstallDir $installDir
+          & (Join-Path $installDir 'swap3d.exe') --version
+          & (Join-Path $installDir 'swap3d.exe') formats --offline
+
+  npm-smoke:
+    needs: npm-publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Run published package with npx
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}"
+          cd "${RUNNER_TEMP}"
+          for attempt in 1 2 3 4 5; do
+            if npm view "@swap3d/cli@${VERSION}" version >/dev/null 2>&1; then
+              break
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              echo "Published npm version did not become available." >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          npx --yes "@swap3d/cli@${VERSION}" --version
+          npx --yes "@swap3d/cli@${VERSION}" formats --offline

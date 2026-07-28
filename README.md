@@ -29,7 +29,7 @@ Install a specific version or directory:
 
 ```bash
 curl -fsSL https://github.com/swap3d/swap3d-cli/releases/latest/download/install.sh |
-  sh -s -- --version 0.2.0 --install-dir "$HOME/.local/bin"
+  sh -s -- --version 0.2.1 --install-dir "$HOME/.local/bin"
 ```
 
 ### Windows
@@ -47,7 +47,7 @@ directory to the user `PATH`.
 ### Homebrew
 
 ```bash
-brew install --cask swap3d/tap/swap3d
+brew install swap3d/tap/swap3d
 ```
 
 ## Quickstart

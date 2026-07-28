@@ -7,7 +7,7 @@ One semantic version identifies all distribution channels:
 - npm package `@swap3d/cli`
 - GitHub Release tag and standalone archives
 - shell and PowerShell installers
-- Homebrew cask
+- Homebrew formula
 
 The release workflow is `.github/workflows/publish.yml`. npm Trusted Publishing
 must continue to authorize that exact filename.
@@ -20,12 +20,12 @@ must continue to authorize that exact filename.
 - [x] standalone binaries build for all supported targets
 - [x] archives contain Apache-2.0 license and notice files
 - [x] shell installer completes a checksum-verified local install
-- [x] generated Homebrew cask passes `brew style` and `brew audit`
+- [x] generated Homebrew formula passes `brew style` and `brew audit`
 - [x] `swap3d/homebrew-tap` exists with automatic synchronization
-- [ ] npm Trusted Publisher succeeds without a traditional token
-- [ ] `swap3d/swap3d-cli` is public
-- [ ] the production `v0.2.0` cross-platform release workflow passes
-- [ ] npm and Homebrew installation smoke tests pass against `v0.2.0`
+- [x] npm Trusted Publisher succeeds without a traditional token
+- [x] `swap3d/swap3d-cli` is public
+- [x] the production `v0.2.0` cross-platform release workflow passes
+- [ ] npm and Homebrew installation smoke tests pass against `v0.2.1`
 
 ## Prepare A Release
 
@@ -44,7 +44,7 @@ npm pack --dry-run
 npx bun@1.3.14 scripts/build-standalone.mjs --all
 npm run package:standalone
 npm run generate:homebrew
-node scripts/verify-release-version.mjs v0.2.0
+node scripts/verify-release-version.mjs v0.2.1
 ```
 
 4. Push `main` and wait for the Test workflow.
@@ -58,7 +58,7 @@ the npm package through OIDC.
 
 Each GitHub Release includes `swap3d.rb`, generated from the SHA-256 values of
 the macOS archives. The public `swap3d/homebrew-tap` workflow checks every six
-hours, validates a changed cask with Homebrew, and commits it automatically.
+hours, validates a changed formula with Homebrew, and commits it automatically.
 No cross-repository write token is required.
 
 ## Installer URLs
@@ -70,8 +70,12 @@ https://github.com/swap3d/swap3d-cli/releases/latest/download/install.sh
 https://github.com/swap3d/swap3d-cli/releases/latest/download/install.ps1
 ```
 
-The branded `swap3d.studio` URLs should redirect to these assets only after the
-first standalone release is healthy.
+The branded `swap3d.studio` URLs redirect to these assets:
+
+```text
+https://swap3d.studio/install.sh
+https://swap3d.studio/install.ps1
+```
 
 ## Rollback
 

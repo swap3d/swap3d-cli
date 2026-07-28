@@ -9,7 +9,7 @@ const repositoryRoot = path.resolve(scriptDir, '..');
 
 function parseArguments(argv) {
   let checksumPath = path.join(repositoryRoot, 'dist', 'release', 'SHA256SUMS');
-  let outputPath = path.join(repositoryRoot, 'dist', 'homebrew', 'Casks', 'swap3d.rb');
+  let outputPath = path.join(repositoryRoot, 'dist', 'homebrew', 'Formula', 'swap3d.rb');
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -47,30 +47,33 @@ const manifest = await fs.readFile(checksumPath, 'utf8');
 const arm64Checksum = checksumFor(manifest, 'swap3d-darwin-arm64.tar.gz');
 const x64Checksum = checksumFor(manifest, 'swap3d-darwin-x64.tar.gz');
 
-const cask = `cask "swap3d" do
-  arch arm: "arm64", intel: "x64"
-
-  version "${packageJson.version}"
-  sha256 arm:   "${arm64Checksum}",
-         intel: "${x64Checksum}"
-
-  url "https://github.com/swap3d/swap3d-cli/releases/download/v#{version}/swap3d-darwin-#{arch}.tar.gz",
-      verified: "github.com/swap3d/swap3d-cli/"
-  name "Swap3D CLI"
+const formula = `class Swap3d < Formula
   desc "Command-line client for the Swap3D developer API"
   homepage "https://swap3d.studio/"
+  version "${packageJson.version}"
+  license "Apache-2.0"
+  depends_on :macos
 
-  livecheck do
-    url :url
-    strategy :github_latest
+  on_macos do
+    if Hardware::CPU.arm?
+      url "https://github.com/swap3d/swap3d-cli/releases/download/v#{version}/swap3d-darwin-arm64.tar.gz"
+      sha256 "${arm64Checksum}"
+    else
+      url "https://github.com/swap3d/swap3d-cli/releases/download/v#{version}/swap3d-darwin-x64.tar.gz"
+      sha256 "${x64Checksum}"
+    end
   end
 
-  binary "swap3d"
+  def install
+    bin.install "swap3d"
+  end
 
-  zap trash: "~/.config/swap3d"
+  test do
+    assert_match version.to_s, shell_output("#{bin}/swap3d --version")
+  end
 end
 `;
 
 await fs.mkdir(path.dirname(outputPath), { recursive: true });
-await fs.writeFile(outputPath, cask, 'utf8');
-process.stdout.write(`Generated Homebrew cask: ${outputPath}\n`);
+await fs.writeFile(outputPath, formula, 'utf8');
+process.stdout.write(`Generated Homebrew formula: ${outputPath}\n`);

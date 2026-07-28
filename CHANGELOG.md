@@ -4,6 +4,11 @@ All notable changes to this package will be documented in this file.
 
 This project follows semantic versioning once the package is published to npm.
 
+## 0.2.1 - 2026-07-28
+
+- Replaced the Homebrew cask with a formula so standalone binaries install
+  without the macOS application quarantine path.
+
 ## 0.2.0 - 2026-07-28
 
 - Changed the project license from MIT to Apache-2.0 for future releases.

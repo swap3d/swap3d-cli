@@ -42,7 +42,7 @@ directory, and explain any required `PATH` change.
 - [x] make the CLI entrypoint work in Node.js and compiled Bun executables
 - [x] add reproducible Bun build commands
 - [x] build all supported operating-system and architecture targets
-- [ ] smoke-test native binaries on GitHub-hosted runners
+- [x] smoke-test native binaries on GitHub-hosted runners
 - [x] confirm standalone binaries never contain credentials or local config
 
 ### Phase 2: GitHub Release
@@ -52,9 +52,9 @@ directory, and explain any required `PATH` change.
 - [x] run the Node.js test suite before release
 - [x] package standalone binaries with `LICENSE`, `NOTICE`, and README
 - [x] generate `SHA256SUMS`
-- [ ] publish `SHA256SUMS` in the production GitHub Release
-- [ ] publish the matching npm version through Trusted Publishing
-- [ ] upload immutable GitHub Release assets
+- [x] publish `SHA256SUMS` in the production GitHub Release
+- [x] publish the matching npm version through Trusted Publishing
+- [x] upload immutable GitHub Release assets
 
 ### Phase 3: Shell Installer
 
@@ -64,7 +64,7 @@ directory, and explain any required `PATH` change.
 - [x] verify SHA-256 before extraction
 - [x] install without `sudo` by default
 - [x] handle `PATH` guidance and conflicting installations
-- [ ] test on macOS and Linux runners
+- [x] test on macOS and Linux runners
 
 ### Phase 4: PowerShell Installer
 
@@ -73,15 +73,15 @@ directory, and explain any required `PATH` change.
 - [x] download and verify the matching ZIP archive
 - [x] install under the current user's local application directory
 - [x] update the user `PATH` without changing machine policy
-- [ ] test on a Windows runner
+- [x] test on a Windows runner
 
 ### Phase 5: Homebrew
 
 - [x] create `swap3d/homebrew-tap`
-- [x] generate a cask backed by GitHub Release artifacts
+- [x] generate a formula backed by GitHub Release artifacts
 - [x] support Apple Silicon and Intel macOS
-- [x] validate the generated cask with `brew style` and `brew audit`
-- [ ] synchronize and install the cask from the production `v0.2.0` release
+- [x] validate the generated formula with `brew style` and `brew audit`
+- [ ] synchronize and install the formula from the production `v0.2.1` release
 - [x] document install, upgrade, and uninstall commands
 
 ### Phase 6: Documentation And Operations
@@ -90,7 +90,7 @@ directory, and explain any required `PATH` change.
 - [x] document release, rollback, and checksum verification
 - [x] keep npm, GitHub Release, installers, and Homebrew on one version
 - [x] add release smoke tests for `--version` and `formats --offline`
-- [ ] publish stable installer URLs through the Swap3D frontend
+- [x] publish stable installer URLs through the Swap3D frontend
 
 ## Security Requirements
 

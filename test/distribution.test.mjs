@@ -49,8 +49,8 @@ test('release checksum verifier accepts exact bytes and rejects tampering', asyn
   }
 });
 
-test('Homebrew cask generator uses release archive checksums', async () => {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'swap3d-cask-test-'));
+test('Homebrew formula generator uses release archive checksums', async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'swap3d-formula-test-'));
   const manifestPath = path.join(tempDir, 'SHA256SUMS');
   const outputPath = path.join(tempDir, 'swap3d.rb');
   const arm64Checksum = 'a'.repeat(64);
@@ -63,18 +63,18 @@ test('Homebrew cask generator uses release archive checksums', async () => {
     );
 
     await execFile(process.execPath, [
-      path.join(repositoryRoot, 'scripts', 'generate-homebrew-cask.mjs'),
+      path.join(repositoryRoot, 'scripts', 'generate-homebrew-formula.mjs'),
       '--checksums',
       manifestPath,
       '--out',
       outputPath,
     ]);
 
-    const cask = await fs.readFile(outputPath, 'utf8');
-    assert.match(cask, new RegExp(`version "${VERSION.replaceAll('.', '\\.')}"`));
-    assert.ok(cask.includes(arm64Checksum));
-    assert.ok(cask.includes(x64Checksum));
-    assert.ok(cask.includes('verified: "github.com/swap3d/swap3d-cli/"'));
+    const formula = await fs.readFile(outputPath, 'utf8');
+    assert.match(formula, new RegExp(`version "${VERSION.replaceAll('.', '\\.')}"`));
+    assert.ok(formula.includes(arm64Checksum));
+    assert.ok(formula.includes(x64Checksum));
+    assert.ok(formula.includes('bin.install "swap3d"'));
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
