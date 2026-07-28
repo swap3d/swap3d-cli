@@ -20,8 +20,8 @@ Publish `@swap3d/cli` as the official command-line client for the Swap3D develop
 - [x] package contents are constrained by `files`
 - [x] GitHub Actions test workflow passes on `main`
 - [ ] npm trusted publisher is configured for `swap3d/swap3d-cli`
-- [ ] first npm publish succeeds with public access
-- [ ] package install smoke passes through npm:
+- [x] first npm publish succeeds with public access
+- [x] package install smoke passes through npm:
 
 ```bash
 npm install -g @swap3d/cli
