@@ -18,7 +18,7 @@ Publish `@swap3d/cli` as the official command-line client for the Swap3D develop
 - [x] package has no runtime dependencies
 - [x] package requires Node.js 18+
 - [x] package contents are constrained by `files`
-- [ ] GitHub Actions test workflow passes on `main`
+- [x] GitHub Actions test workflow passes on `main`
 - [ ] npm trusted publisher is configured for `swap3d/swap3d-cli`
 - [ ] first npm publish succeeds with public access
 - [ ] package install smoke passes through npm:
@@ -46,6 +46,8 @@ Preferred publishing path:
    - Repository: `swap3d/swap3d-cli`
    - Workflow: `publish.yml`
 4. Publish by creating a GitHub release or manually running the publish workflow.
+
+The publish workflow uses Node.js 24 and upgrades to the latest npm CLI before publishing so the GitHub Actions environment satisfies npm trusted publishing requirements.
 
 ## Provenance
 
