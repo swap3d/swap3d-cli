@@ -31,6 +31,11 @@ Current API key endpoints:
 
 - `POST /openapi/convert`
 - `GET /openapi/convert/status/:jobId`
+- `GET /openapi/usage`
+
+Current public metadata endpoint:
+
+- `GET /openapi/formats`
 
 The current backend upload limit is `100 MB`.
 
@@ -58,7 +63,12 @@ Current supported source extensions:
 - `igs`
 - `brep`
 
-Do not add CLI commands that imply backend support which does not exist yet. In particular, usage lookup is currently a dashboard JWT endpoint in `swap3d-studio`, not an API-key endpoint.
+Do not add CLI commands that imply backend support which does not exist yet. Keep command behavior aligned with the production routes in `swap3d/swap3d-studio`.
+
+## License
+
+The repository is licensed under Apache-2.0. Keep `package.json`, `LICENSE`,
+`NOTICE`, the README, and release notes aligned when licensing metadata changes.
 
 ## Security Rules
 

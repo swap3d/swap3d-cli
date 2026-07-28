@@ -18,6 +18,7 @@ Publish `@swap3d/cli` as the official command-line client for the Swap3D develop
 - [x] package has no runtime dependencies
 - [x] package requires Node.js 18+
 - [x] package contents are constrained by `files`
+- [x] package source is licensed under Apache-2.0
 - [x] GitHub Actions test workflow passes on `main`
 - [ ] npm trusted publisher is configured for `swap3d/swap3d-cli`
 - [x] first npm publish succeeds with public access
@@ -51,13 +52,10 @@ The publish workflow uses Node.js 24 and upgrades to the latest npm CLI before p
 
 ## Provenance
 
-The repository is currently private. npm documents that provenance is not generated from private GitHub repositories, even with trusted publishing.
-
-When the CLI repository becomes public, update the publish workflow to use:
-
-```bash
-npm publish --provenance --access public
-```
+npm automatically generates provenance when a public package is published from
+a public GitHub repository through Trusted Publishing. No explicit
+`--provenance` flag is required. Private repositories can use Trusted
+Publishing, but npm does not generate provenance for those releases.
 
 ## Next Feature Gates
 

@@ -110,3 +110,8 @@ Use JSON output for scripts:
 swap3d usage --json
 swap3d job status <jobId> --json
 ```
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and
+[NOTICE](NOTICE).

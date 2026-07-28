@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/swap3d/swap3d-cli.git"
+    "url": "https://github.com/swap3d/swap3d-cli.git"
   },
   "bugs": {
     "url": "https://github.com/swap3d/swap3d-cli/issues"
@@ -18,7 +18,8 @@
     "src",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "test": "node --test",
@@ -38,5 +39,5 @@
     "glb",
     "cli"
   ],
-  "license": "MIT"
+  "license": "Apache-2.0"
 }
