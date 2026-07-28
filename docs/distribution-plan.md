@@ -81,7 +81,7 @@ directory, and explain any required `PATH` change.
 - [x] generate a formula backed by GitHub Release artifacts
 - [x] support Apple Silicon and Intel macOS
 - [x] validate the generated formula with `brew style` and `brew audit`
-- [ ] synchronize and install the formula from the production `v0.2.1` release
+- [x] synchronize and install the formula from the production `v0.2.1` release
 - [x] document install, upgrade, and uninstall commands
 
 ### Phase 6: Documentation And Operations
@@ -95,6 +95,7 @@ directory, and explain any required `PATH` change.
 ## Security Requirements
 
 - release workflows use least-privilege GitHub permissions
+- GitHub release immutability is enabled and asserted after publication
 - npm publishing uses Trusted Publishing instead of a long-lived token
 - release artifacts are built only from version tags
 - installers fail closed when checksums are missing or invalid

@@ -8,7 +8,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 
-export const VERSION = '0.2.1';
+export const VERSION = '0.2.2';
 export const DEFAULT_API_URL = 'https://api.swap3d.studio/api/v1';
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 export const TARGET_FORMATS = ['glb', 'gltf', 'glb2', 'gltf2'];

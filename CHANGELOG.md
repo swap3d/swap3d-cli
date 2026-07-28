@@ -4,6 +4,11 @@ All notable changes to this package will be documented in this file.
 
 This project follows semantic versioning once the package is published to npm.
 
+## 0.2.2 - 2026-07-28
+
+- Enabled immutable GitHub Releases and added a release-workflow assertion
+  that prevents publishing mutable artifacts.
+
 ## 0.2.1 - 2026-07-28
 
 - Replaced the Homebrew cask with a formula so standalone binaries install

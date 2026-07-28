@@ -1,6 +1,6 @@
 {
   "name": "@swap3d/cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Command-line client for the Swap3D developer API.",
   "type": "module",
   "bin": {

@@ -25,7 +25,8 @@ must continue to authorize that exact filename.
 - [x] npm Trusted Publisher succeeds without a traditional token
 - [x] `swap3d/swap3d-cli` is public
 - [x] the production `v0.2.0` cross-platform release workflow passes
-- [ ] npm and Homebrew installation smoke tests pass against `v0.2.1`
+- [x] npm and Homebrew installation smoke tests pass against `v0.2.1`
+- [x] immutable GitHub Releases are enabled for future versions
 
 ## Prepare A Release
 
@@ -44,7 +45,7 @@ npm pack --dry-run
 npx bun@1.3.14 scripts/build-standalone.mjs --all
 npm run package:standalone
 npm run generate:homebrew
-node scripts/verify-release-version.mjs v0.2.1
+node scripts/verify-release-version.mjs v0.2.2
 ```
 
 4. Push `main` and wait for the Test workflow.

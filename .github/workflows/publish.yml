@@ -109,6 +109,12 @@ jobs:
               --generate-notes \
               --title "Swap3D CLI ${GITHUB_REF_NAME}"
           fi
+          test "$(
+            gh release view "${GITHUB_REF_NAME}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --json isImmutable \
+              --jq .isImmutable
+          )" = "true"
 
   npm-publish:
     needs: github-release

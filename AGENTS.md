@@ -109,6 +109,7 @@ Release rules:
 - release archives must include `LICENSE`, `NOTICE`, and `README.md`
 - installers must verify the matching entry in `SHA256SUMS`
 - npm publishing must use the `publish.yml` Trusted Publisher
+- GitHub release immutability must stay enabled for the repository
 - the generated `swap3d.rb` release asset is synchronized by
   `swap3d/homebrew-tap`; do not hand-edit formula checksums
 
@@ -118,5 +119,5 @@ Relevant commands:
 npx bun@1.3.14 scripts/build-standalone.mjs --all
 npm run package:standalone
 npm run generate:homebrew
-node scripts/verify-release-version.mjs v0.2.1
+node scripts/verify-release-version.mjs v0.2.2
 ```
