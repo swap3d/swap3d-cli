@@ -25,7 +25,7 @@ must continue to authorize that exact filename.
 - [x] npm Trusted Publisher succeeds without a traditional token
 - [x] `swap3d/swap3d-cli` is public
 - [x] the production `v0.2.0` cross-platform release workflow passes
-- [x] npm and Homebrew installation smoke tests pass against `v0.2.1`
+- [x] npm and Homebrew installation smoke tests pass against `v0.2.2`
 - [x] immutable GitHub Releases are enabled for future versions
 
 ## Prepare A Release

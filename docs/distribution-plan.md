@@ -81,7 +81,7 @@ directory, and explain any required `PATH` change.
 - [x] generate a formula backed by GitHub Release artifacts
 - [x] support Apple Silicon and Intel macOS
 - [x] validate the generated formula with `brew style` and `brew audit`
-- [x] synchronize and install the formula from the production `v0.2.1` release
+- [x] synchronize and install the formula from the immutable production `v0.2.2` release
 - [x] document install, upgrade, and uninstall commands
 
 ### Phase 6: Documentation And Operations

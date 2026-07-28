@@ -22,13 +22,13 @@ npx @swap3d/cli formats
 The standalone installer does not require Node.js:
 
 ```bash
-curl -fsSL https://github.com/swap3d/swap3d-cli/releases/latest/download/install.sh | sh
+curl -fsSL https://swap3d.studio/install.sh | sh
 ```
 
 Install a specific version or directory:
 
 ```bash
-curl -fsSL https://github.com/swap3d/swap3d-cli/releases/latest/download/install.sh |
+curl -fsSL https://swap3d.studio/install.sh |
   sh -s -- --version 0.2.2 --install-dir "$HOME/.local/bin"
 ```
 
@@ -37,7 +37,7 @@ curl -fsSL https://github.com/swap3d/swap3d-cli/releases/latest/download/install
 Run from Windows PowerShell without administrator privileges:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -c "irm https://github.com/swap3d/swap3d-cli/releases/latest/download/install.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -c "irm https://swap3d.studio/install.ps1 | iex"
 ```
 
 The execution-policy override applies only to that PowerShell process. The
