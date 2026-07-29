@@ -77,6 +77,13 @@ includes:
   - arm64: `swap3d-windows-arm64.zip`
 
 Verify manual downloads against the `SHA256SUMS` file in the same release.
+Releases also include an SPDX SBOM and signed GitHub artifact attestations.
+With the GitHub CLI installed, verify an archive with:
+
+```shell
+gh attestation verify ./swap3d-darwin-arm64.tar.gz \
+  --repo swap3d/swap3d-cli
+```
 
 </details>
 
