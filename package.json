@@ -1,6 +1,6 @@
 {
   "name": "@swap3d/cli",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Convert 3D files from your terminal with the Swap3D API.",
   "type": "module",
   "bin": {
@@ -45,5 +45,8 @@
     "glb",
     "cli"
   ],
+  "dependencies": {
+    "@swap3d/sdk": "^0.1.0"
+  },
   "license": "Apache-2.0"
 }

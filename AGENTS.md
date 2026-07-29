@@ -63,7 +63,10 @@ Current supported source extensions:
 - `igs`
 - `brep`
 
-Do not add CLI commands that imply backend support which does not exist yet. Keep command behavior aligned with the production routes in `swap3d/swap3d-studio`.
+Do not add CLI commands that imply backend support which does not exist yet.
+The versioned `swap3d/swap3d-openapi` contract and `@swap3d/sdk` are the
+sources of truth for client types and runtime capability constants. Keep
+command behavior aligned with the production routes in `swap3d/swap3d-studio`.
 
 ## License
 
@@ -87,7 +90,8 @@ node src/cli.mjs auth status
 npx bun@1.3.14 scripts/build-standalone.mjs
 ```
 
-The CLI intentionally has no runtime dependencies at MVP stage and requires Node.js 18+.
+The CLI requires Node.js 18+ and uses `@swap3d/sdk` for API transport,
+structured errors, retries, and generated capability metadata.
 
 ## Distribution
 
@@ -119,5 +123,5 @@ Relevant commands:
 npx bun@1.3.14 scripts/build-standalone.mjs --all
 npm run package:standalone
 npm run generate:homebrew
-node scripts/verify-release-version.mjs v0.2.3
+node scripts/verify-release-version.mjs v0.3.0
 ```

@@ -4,6 +4,13 @@ All notable changes to this package will be documented in this file.
 
 This project follows semantic versioning once the package is published to npm.
 
+## 0.3.0 - 2026-07-29
+
+- Reused the official `@swap3d/sdk` for API requests, response handling,
+  retries, errors, and generated capability constants.
+- Preserved existing commands, configuration, output, and standalone binary
+  behavior.
+
 ## 0.2.3 - 2026-07-28
 
 - Reworked the README around installation, first conversion, authentication,

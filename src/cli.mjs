@@ -7,27 +7,17 @@ import process from 'node:process';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_API_URL,
+  MAX_UPLOAD_BYTES,
+  SOURCE_EXTENSIONS,
+  Swap3DClient,
+  Swap3DError,
+  TARGET_FORMATS,
+} from '@swap3d/sdk';
 
-export const VERSION = '0.2.3';
-export const DEFAULT_API_URL = 'https://api.swap3d.studio/api/v1';
-export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
-export const TARGET_FORMATS = ['glb', 'gltf', 'glb2', 'gltf2'];
-export const SOURCE_EXTENSIONS = [
-  'obj',
-  'glb',
-  'gltf',
-  'fbx',
-  'dae',
-  'stl',
-  'ply',
-  '3ds',
-  'blend',
-  'step',
-  'stp',
-  'iges',
-  'igs',
-  'brep',
-];
+export const VERSION = '0.3.0';
+export { DEFAULT_API_URL, MAX_UPLOAD_BYTES, SOURCE_EXTENSIONS, TARGET_FORMATS };
 
 class CliError extends Error {
   constructor(message, { exitCode = 1 } = {}) {
@@ -36,8 +26,6 @@ class CliError extends Error {
     this.exitCode = exitCode;
   }
 }
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function getConfigPath(env = process.env) {
   const baseDir = env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
@@ -128,35 +116,11 @@ function requireApiKey(runtime) {
   }
 }
 
-function makeApiUrl(apiUrl, pathname) {
-  return `${normalizeApiUrl(apiUrl)}${pathname.startsWith('/') ? pathname : `/${pathname}`}`;
-}
-
-async function parseApiResponse(response) {
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    return response.json();
-  }
-  return response.text();
-}
-
-function getApiErrorMessage(payload, fallback) {
-  if (!payload) {
-    return fallback;
-  }
-  if (typeof payload === 'string') {
-    return payload || fallback;
-  }
-  return payload.error?.message || payload.message || fallback;
-}
-
-async function fetchJson(url, options) {
-  const response = await fetch(url, options);
-  const payload = await parseApiResponse(response);
-  if (!response.ok) {
-    throw new CliError(getApiErrorMessage(payload, `Request failed with HTTP ${response.status}`));
-  }
-  return payload;
+function createClient({ apiUrl, apiKey }) {
+  return new Swap3DClient({
+    apiKey,
+    baseUrl: normalizeApiUrl(apiUrl),
+  });
 }
 
 function writeJson(out, payload) {
@@ -216,19 +180,13 @@ function defaultOutputPath(inputFile, targetFormat) {
 export async function submitConversion({ apiUrl, apiKey, filePath, targetFormat }) {
   const file = await validateInputFile(filePath);
   const normalizedTargetFormat = validateTargetFormat(targetFormat);
-  const form = new FormData();
   const bytes = await fs.readFile(file.absolutePath);
   const blob = new Blob([bytes]);
 
-  form.append('targetFormat', normalizedTargetFormat);
-  form.append('file', blob, path.basename(file.absolutePath));
-
-  return fetchJson(makeApiUrl(apiUrl, '/openapi/convert'), {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: form,
+  return createClient({ apiUrl, apiKey }).createConversion({
+    file: blob,
+    fileName: path.basename(file.absolutePath),
+    targetFormat: normalizedTargetFormat,
   });
 }
 
@@ -237,76 +195,46 @@ export async function getJobStatus({ apiUrl, apiKey, jobId }) {
     throw new CliError('Missing job id.');
   }
 
-  return fetchJson(makeApiUrl(apiUrl, `/openapi/convert/status/${encodeURIComponent(jobId)}`), {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: 'application/json',
-    },
-  });
+  return createClient({ apiUrl, apiKey }).getConversionStatus(jobId);
 }
 
 export async function getUsage({ apiUrl, apiKey }) {
-  return fetchJson(makeApiUrl(apiUrl, '/openapi/usage'), {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: 'application/json',
-    },
-  });
+  return createClient({ apiUrl, apiKey }).getUsage();
 }
 
 export async function getFormats({ apiUrl }) {
-  return fetchJson(makeApiUrl(apiUrl, '/openapi/formats'), {
-    headers: {
-      Accept: 'application/json',
-    },
-  });
+  return createClient({ apiUrl }).getFormats();
 }
 
 async function pollJob({ apiUrl, apiKey, jobId, intervalMs, timeoutMs, out }) {
-  const start = Date.now();
   let lastStatus = null;
+  const status = await createClient({ apiUrl, apiKey }).waitForConversion(jobId, {
+    intervalMs,
+    timeoutMs,
+    onStatus: (current) => {
+      if (out && current.status !== lastStatus) {
+        out.write(`status: ${current.status}\n`);
+        lastStatus = current.status;
+      }
+    },
+  });
 
-  while (true) {
-    const status = await getJobStatus({ apiUrl, apiKey, jobId });
-    if (out && status.status !== lastStatus) {
-      out.write(`status: ${status.status}\n`);
-      lastStatus = status.status;
-    }
-
-    if (status.status === 'completed') {
-      return status;
-    }
-
-    if (status.status === 'failed') {
-      throw new CliError(`Conversion failed: ${status.error || 'unknown error'}`);
-    }
-
-    if (status.status === 'expired') {
-      throw new CliError(status.error?.message || 'Conversion output expired.');
-    }
-
-    if (Date.now() - start > timeoutMs) {
-      throw new CliError(`Timed out waiting for job ${jobId}.`);
-    }
-
-    await sleep(intervalMs);
+  if (status.status === 'failed') {
+    throw new CliError(`Conversion failed: ${status.error || 'unknown error'}`);
   }
-}
 
-function resolveDownloadUrl(apiUrl, downloadUrl) {
-  if (!downloadUrl) {
-    throw new CliError('Completed job did not include a download URL.');
+  if (status.status === 'expired') {
+    throw new CliError(status.error?.message || 'Conversion output expired.');
   }
-  return new URL(downloadUrl, `${normalizeApiUrl(apiUrl)}/`).toString();
+
+  return status;
 }
 
 export async function downloadResult({ apiUrl, downloadUrl, outFile }) {
-  const resolvedUrl = resolveDownloadUrl(apiUrl, downloadUrl);
-  const response = await fetch(resolvedUrl);
-  if (!response.ok) {
-    const payload = await parseApiResponse(response);
-    throw new CliError(getApiErrorMessage(payload, `Download failed with HTTP ${response.status}`));
+  if (!downloadUrl) {
+    throw new CliError('Completed job did not include a download URL.');
   }
+  const response = await createClient({ apiUrl }).download(downloadUrl);
 
   await fs.mkdir(path.dirname(path.resolve(outFile)), { recursive: true });
   await pipeline(Readable.fromWeb(response.body), fsSync.createWriteStream(outFile));
@@ -628,9 +556,9 @@ if (import.meta.main === true || isCliEntrypoint()) {
   runCli().then((exitCode) => {
     process.exitCode = exitCode;
   }).catch((error) => {
-    if (error instanceof CliError) {
+    if (error instanceof CliError || error instanceof Swap3DError) {
       process.stderr.write(`Error: ${error.message}\n`);
-      process.exitCode = error.exitCode;
+      process.exitCode = error.exitCode || 1;
       return;
     }
     process.stderr.write(`${error.stack || error.message}\n`);

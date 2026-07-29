@@ -12,7 +12,8 @@ Thanks for helping improve Swap3D CLI.
 
 ## Development
 
-Swap3D CLI requires Node.js 18 or newer and has no runtime dependencies.
+Swap3D CLI requires Node.js 18 or newer. Its API transport and public
+capability metadata come from the official `@swap3d/sdk`.
 
 ```shell
 git clone https://github.com/swap3d/swap3d-cli.git

@@ -108,7 +108,7 @@ test('submitConversion posts multipart data to the developer API', async () => {
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, `${DEFAULT_API_URL}/openapi/convert`);
     assert.equal(calls[0].options.method, 'POST');
-    assert.equal(calls[0].options.headers.Authorization, 'Bearer sk_test_123');
+    assert.equal(new Headers(calls[0].options.headers).get('Authorization'), 'Bearer sk_test_123');
     assert.ok(calls[0].options.body instanceof FormData);
   } finally {
     globalThis.fetch = originalFetch;
@@ -136,7 +136,7 @@ test('getUsage reads API-key usage metadata', async () => {
     const usage = await getUsage({ apiUrl: DEFAULT_API_URL, apiKey: 'sk_test_123' });
     assert.equal(usage.remaining, 88);
     assert.equal(calls[0].url, `${DEFAULT_API_URL}/openapi/usage`);
-    assert.equal(calls[0].options.headers.Authorization, 'Bearer sk_test_123');
+    assert.equal(new Headers(calls[0].options.headers).get('Authorization'), 'Bearer sk_test_123');
   } finally {
     globalThis.fetch = originalFetch;
   }

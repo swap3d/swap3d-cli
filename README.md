@@ -191,13 +191,13 @@ Install a specific standalone version or choose another directory:
 
 ```shell
 curl -fsSL https://swap3d.studio/install.sh |
-  sh -s -- --version 0.2.3 --install-dir "$HOME/.local/bin"
+  sh -s -- --version 0.3.0 --install-dir "$HOME/.local/bin"
 ```
 
 PowerShell supports the equivalent parameters:
 
 ```powershell
-$env:SWAP3D_VERSION = "0.2.3"
+$env:SWAP3D_VERSION = "0.3.0"
 $env:SWAP3D_INSTALL_DIR = "$HOME\bin"
 irm https://swap3d.studio/install.ps1 | iex
 ```
