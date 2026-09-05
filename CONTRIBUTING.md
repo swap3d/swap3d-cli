@@ -55,6 +55,13 @@ npx bun@1.3.14 scripts/build-standalone.mjs --all
 npm run package:standalone
 ```
 
+For Homebrew generation changes, run `npm run generate:homebrew` with the release
+`SHA256SUMS`, then validate the generated formula in a temporary tap with
+`brew style --formula` and `brew audit --formula`. The generator writes the
+package version into both archive URLs so Homebrew can infer it; do not add a
+redundant `version` declaration. Published release assets are immutable, so
+generator fixes apply to the next release, not an existing release asset.
+
 ## Pull Requests
 
 Pull requests should:

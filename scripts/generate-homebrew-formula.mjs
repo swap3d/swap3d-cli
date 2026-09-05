@@ -50,16 +50,15 @@ const x64Checksum = checksumFor(manifest, 'swap3d-darwin-x64.tar.gz');
 const formula = `class Swap3d < Formula
   desc "Command-line client for the Swap3D developer API"
   homepage "https://swap3d.studio/"
-  version "${packageJson.version}"
   license "Apache-2.0"
   depends_on :macos
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/swap3d/swap3d-cli/releases/download/v#{version}/swap3d-darwin-arm64.tar.gz"
+      url "https://github.com/swap3d/swap3d-cli/releases/download/v${packageJson.version}/swap3d-darwin-arm64.tar.gz"
       sha256 "${arm64Checksum}"
     else
-      url "https://github.com/swap3d/swap3d-cli/releases/download/v#{version}/swap3d-darwin-x64.tar.gz"
+      url "https://github.com/swap3d/swap3d-cli/releases/download/v${packageJson.version}/swap3d-darwin-x64.tar.gz"
       sha256 "${x64Checksum}"
     end
   end

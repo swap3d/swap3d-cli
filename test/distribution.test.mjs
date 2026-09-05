@@ -71,7 +71,10 @@ test('Homebrew formula generator uses release archive checksums', async () => {
     ]);
 
     const formula = await fs.readFile(outputPath, 'utf8');
-    assert.match(formula, new RegExp(`version "${VERSION.replaceAll('.', '\\.')}"`));
+    assert.doesNotMatch(formula, /^\s*version\s+/m);
+    for (const architecture of ['arm64', 'x64']) {
+      assert.ok(formula.includes(`url "https://github.com/swap3d/swap3d-cli/releases/download/v${VERSION}/swap3d-darwin-${architecture}.tar.gz"`));
+    }
     assert.ok(formula.includes(arm64Checksum));
     assert.ok(formula.includes(x64Checksum));
     assert.ok(formula.includes('bin.install "swap3d"'));
